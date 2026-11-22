@@ -48,16 +48,19 @@ hat can't be read (e.g. it was unplugged) or the fake-disconnect button is held.
 
 ## Putting it on the StickS3
 
-The StickS3 needs **UIFlow2** firmware (flash it with M5Burner if it doesn't have it).
-Then copy the files over with `mpremote`:
+The StickS3 needs **UIFlow2** firmware (tested on v2.4.8; flash it with M5Burner if it doesn't have it).
+Plug it in over USB, then copy the files over with `mpremote`:
 
 ```bash
-uvx mpremote cp config.py main.py signals.py device.py screen.py :
+uvx mpremote resume cp config.py main.py signals.py device.py screen.py :/flash/
 ```
 
 ```bash
 uvx mpremote reset
 ```
+
+`resume` matters: without it, mpremote restarts UIFlow's startup app first and the copy fails.
+After the reset the StickS3 starts the controller on its own.
 
 ## Running the tests on a laptop
 
