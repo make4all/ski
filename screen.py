@@ -1,11 +1,18 @@
 # Draws the wearer and their motors on the StickS3 screen.
 
-from M5 import Lcd
+from M5 import Lcd, Widgets
 
 import config
 
 WIDTH = 135
 HEIGHT = 240
+FONT = Widgets.FONTS.DejaVu18
+LINE_HEIGHT = 22
+
+# Screen areas for text: (x, y, width, height).
+# The whole area is wiped before new text is drawn, so no old text is left behind.
+STATUS_AREA = (0, 0, WIDTH, 28)                # "LINK OK" / "NO LINK" at the top
+SIGNAL_AREA = (0, 172, WIDTH, HEIGHT - 172)    # active signal names under the body
 
 
 def blend(color_a, color_b, fraction):
@@ -27,7 +34,7 @@ def draw_body():
     Lcd.fillScreen(config.BACKGROUND_COLOR)
     c = config.BODY_OUTLINE_COLOR
     Lcd.drawCircle(67, 45, 15, c)                   # head
-    Lcd.drawRoundRect(28, 64, 79, 110, 10, c)       # torso
+    Lcd.drawRoundRect(28, 64, 79, 106, 10, c)       # torso
     Lcd.drawLine(28, 70, 12, 135, c)                # left arm
     Lcd.drawLine(106, 70, 122, 135, c)              # right arm
 
@@ -38,37 +45,30 @@ def draw_motor(name, strength):
     Lcd.drawCircle(spot["x"], spot["y"], config.MOTOR_RADIUS, config.BODY_OUTLINE_COLOR)
 
 
-def draw_text_line(text, y, color=None):
-    Lcd.fillRect(0, y, WIDTH, 16, config.BACKGROUND_COLOR)
-    Lcd.setTextColor(color if color is not None else config.TEXT_COLOR, config.BACKGROUND_COLOR)
-    Lcd.drawString(text, 4, y)
-
-
-def draw_connection(connected):
-    if connected:
-        draw_text_line("LINK OK", 4, 0x00C000)
-    else:
-        draw_text_line("NO LINK", 4, 0xFF0000)
-
-
-def draw_signal_names(names):
-    """List the active signals under the body (up to 3 lines)."""
-    for row in range(3):
-        text = names[row] if row < len(names) else ""
-        draw_text_line(text, 186 + row * 17)
+def write_lines(lines, area, color):
+    """Wipe a screen area, then write lines of text into it."""
+    x, y, width, height = area
+    Lcd.fillRect(x, y, width, height, config.BACKGROUND_COLOR)
+    Lcd.setFont(FONT)
+    Lcd.setTextSize(1)
+    Lcd.setTextColor(color, config.BACKGROUND_COLOR)
+    for row, line in enumerate(lines):
+        Lcd.drawString(line, x + 3, y + 2 + row * LINE_HEIGHT)
 
 
 def show_problems(problems):
     """Show config.py mistakes so they can be fixed without a computer log."""
     Lcd.fillScreen(config.BACKGROUND_COLOR)
+    Lcd.setFont(Widgets.FONTS.DejaVu12)
+    Lcd.setTextSize(1)
     Lcd.setTextColor(0xFF4040, config.BACKGROUND_COLOR)
-    Lcd.drawString("Fix config.py:", 4, 4)
+    Lcd.drawString("Fix config.py:", 3, 3)
     Lcd.setTextColor(config.TEXT_COLOR, config.BACKGROUND_COLOR)
     y = 24
     for problem in problems:
-        for start in range(0, len(problem), 20):   # wrap long lines
-            Lcd.drawString(problem[start:start + 20], 4, y)
-            y += 14
+        for start in range(0, len(problem), 14):   # wrap long lines
+            Lcd.drawString(problem[start:start + 14], 3, y)
+            y += 16
         y += 6
 
 
@@ -77,7 +77,6 @@ class Screen:
 
     def __init__(self):
         Lcd.setRotation(0)
-        Lcd.setTextSize(1.5)
         draw_body()
         self.shown_strengths = {}
         self.shown_names = None
@@ -90,9 +89,12 @@ class Screen:
                 self.shown_strengths[name] = strength
 
         if signal_names != self.shown_names:
-            draw_signal_names(signal_names)
+            write_lines(signal_names[:3], SIGNAL_AREA, config.TEXT_COLOR)
             self.shown_names = signal_names
 
         if connected != self.shown_connected:
-            draw_connection(connected)
+            if connected:
+                write_lines(["LINK OK"], STATUS_AREA, 0x00C000)
+            else:
+                write_lines(["NO LINK"], STATUS_AREA, 0xFF0000)
             self.shown_connected = connected
